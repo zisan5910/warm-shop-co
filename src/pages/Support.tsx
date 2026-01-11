@@ -3,6 +3,7 @@ import { Layout } from '@/components/layout/Layout';
 import { Phone, MessageCircle, Mail, Clock, MapPin, HelpCircle, Package, CreditCard, Truck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { useSettings } from '@/hooks/useSettings';
 
 const faqs = [
   {
@@ -28,6 +29,8 @@ const faqs = [
 ];
 
 const Support = () => {
+  const { settings } = useSettings();
+
   return (
     <Layout>
       <div className="container-main py-8 md:py-12">
@@ -43,44 +46,71 @@ const Support = () => {
 
         {/* Contact Options */}
         <div className="grid sm:grid-cols-3 gap-4 mb-12">
-          <a
-            href="tel:+8801XXXXXXXXX"
-            className="flex flex-col items-center p-6 bg-card rounded-xl border border-border hover:border-primary transition-colors text-center"
-          >
-            <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-              <Phone className="w-6 h-6 text-primary" />
-            </div>
-            <h3 className="font-semibold mb-1">Call Us</h3>
-            <p className="text-sm text-muted-foreground mb-3">Mon-Sat, 9AM-9PM</p>
-            <span className="text-primary font-medium">+880 1XXX-XXXXXX</span>
-          </a>
+          {settings.phone && (
+            <a
+              href={`tel:${settings.phone}`}
+              className="flex flex-col items-center p-6 bg-card rounded-xl border border-border hover:border-primary transition-colors text-center"
+            >
+              <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+                <Phone className="w-6 h-6 text-primary" />
+              </div>
+              <h3 className="font-semibold mb-1">Call Us</h3>
+              <p className="text-sm text-muted-foreground mb-3">Mon-Sat, 9AM-9PM</p>
+              <span className="text-primary font-medium">{settings.phone}</span>
+            </a>
+          )}
 
-          <a
-            href="https://wa.me/8801XXXXXXXXX"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex flex-col items-center p-6 bg-card rounded-xl border border-border hover:border-success transition-colors text-center"
-          >
-            <div className="w-14 h-14 rounded-full bg-success/10 flex items-center justify-center mb-4">
-              <MessageCircle className="w-6 h-6 text-success" />
-            </div>
-            <h3 className="font-semibold mb-1">WhatsApp</h3>
-            <p className="text-sm text-muted-foreground mb-3">Quick responses</p>
-            <span className="text-success font-medium">Chat Now</span>
-          </a>
+          {settings.whatsapp && (
+            <a
+              href={`https://wa.me/${settings.whatsapp}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex flex-col items-center p-6 bg-card rounded-xl border border-border hover:border-success transition-colors text-center"
+            >
+              <div className="w-14 h-14 rounded-full bg-success/10 flex items-center justify-center mb-4">
+                <MessageCircle className="w-6 h-6 text-success" />
+              </div>
+              <h3 className="font-semibold mb-1">WhatsApp</h3>
+              <p className="text-sm text-muted-foreground mb-3">Quick responses</p>
+              <span className="text-success font-medium">Chat Now</span>
+            </a>
+          )}
 
-          <a
-            href="mailto:support@shophub.com"
-            className="flex flex-col items-center p-6 bg-card rounded-xl border border-border hover:border-primary transition-colors text-center"
-          >
-            <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-              <Mail className="w-6 h-6 text-primary" />
+          {settings.email && (
+            <a
+              href={`mailto:${settings.email}`}
+              className="flex flex-col items-center p-6 bg-card rounded-xl border border-border hover:border-primary transition-colors text-center"
+            >
+              <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+                <Mail className="w-6 h-6 text-primary" />
+              </div>
+              <h3 className="font-semibold mb-1">Email Us</h3>
+              <p className="text-sm text-muted-foreground mb-3">We reply within 24hrs</p>
+              <span className="text-primary font-medium">{settings.email}</span>
+            </a>
+          )}
+
+          {!settings.phone && !settings.whatsapp && !settings.email && (
+            <div className="sm:col-span-3 text-center py-8 text-muted-foreground">
+              <p>Contact information not available. Please check back later.</p>
             </div>
-            <h3 className="font-semibold mb-1">Email Us</h3>
-            <p className="text-sm text-muted-foreground mb-3">We reply within 24hrs</p>
-            <span className="text-primary font-medium">support@shophub.com</span>
-          </a>
+          )}
         </div>
+
+        {/* Location */}
+        {settings.location && (
+          <div className="mb-12 p-6 bg-card rounded-xl border border-border">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                <MapPin className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <h3 className="font-semibold mb-1">Our Location</h3>
+                <p className="text-muted-foreground whitespace-pre-line">{settings.location}</p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Quick Help Topics */}
         <div className="grid md:grid-cols-4 gap-4 mb-12">

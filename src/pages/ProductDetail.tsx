@@ -4,9 +4,10 @@ import { Layout } from '@/components/layout/Layout';
 import { useProduct, useCategories } from '@/hooks/useProducts';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
+import { useSettings } from '@/hooks/useSettings';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ShoppingCart, Minus, Plus, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
+import { ShoppingCart, Minus, Plus, ChevronLeft, ChevronRight, Loader2, Phone, MessageCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -17,6 +18,7 @@ const ProductDetail = () => {
   const { categories } = useCategories();
   const { currentUser } = useAuth();
   const { addToCart } = useCart();
+  const { settings, loading: settingsLoading } = useSettings();
   const [quantity, setQuantity] = useState(1);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [adding, setAdding] = useState(false);
@@ -237,22 +239,33 @@ const ProductDetail = () => {
             {/* Support Section */}
             <div className="border-t border-border pt-4">
               <h3 className="font-semibold mb-3 text-sm">Need Help?</h3>
-              <div className="flex flex-wrap gap-2">
-                <a
-                  href="tel:+8801XXXXXXXXX"
-                  className="inline-flex items-center gap-2 px-3 py-2 bg-secondary rounded-lg text-sm hover:bg-secondary/80 transition-colors pointer-events-auto"
-                >
-                  📞 Call Us
-                </a>
-                <a
-                  href="https://wa.me/8801XXXXXXXXX"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-3 py-2 bg-success/10 text-success rounded-lg text-sm hover:bg-success/20 transition-colors pointer-events-auto"
-                >
-                  💬 WhatsApp
-                </a>
-              </div>
+              {settingsLoading ? (
+                <div className="flex gap-2">
+                  <Skeleton className="h-10 w-24" />
+                  <Skeleton className="h-10 w-28" />
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {settings.phone && (
+                    <a
+                      href={`tel:${settings.phone}`}
+                      className="inline-flex items-center gap-2 px-3 py-2 bg-secondary rounded-lg text-sm hover:bg-secondary/80 transition-colors pointer-events-auto"
+                    >
+                      <Phone className="w-4 h-4" /> Call Us
+                    </a>
+                  )}
+                  {settings.whatsapp && (
+                    <a
+                      href={`https://wa.me/${settings.whatsapp}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 px-3 py-2 bg-success/10 text-success rounded-lg text-sm hover:bg-success/20 transition-colors pointer-events-auto"
+                    >
+                      <MessageCircle className="w-4 h-4" /> WhatsApp
+                    </a>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>

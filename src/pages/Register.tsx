@@ -1,15 +1,18 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSettings } from '@/hooks/useSettings';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, Eye, EyeOff } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Loader2, Eye, EyeOff, Store } from 'lucide-react';
 import { toast } from 'sonner';
 
 const Register = () => {
   const navigate = useNavigate();
   const { register } = useAuth();
+  const { settings, loading: settingsLoading } = useSettings();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -52,12 +55,37 @@ const Register = () => {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <Link to="/" className="inline-flex items-center gap-2 mb-6">
-            <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-2xl">S</span>
-            </div>
+            {settingsLoading ? (
+              <>
+                <Skeleton className="w-12 h-12 rounded-xl" />
+                <Skeleton className="w-24 h-6" />
+              </>
+            ) : (
+              <>
+                {settings.appLogo ? (
+                  <img 
+                    src={settings.appLogo} 
+                    alt={settings.appName} 
+                    className="w-12 h-12 rounded-xl object-contain"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                      e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                    }}
+                  />
+                ) : null}
+                <div className={`w-12 h-12 rounded-xl bg-primary flex items-center justify-center ${settings.appLogo ? 'hidden' : ''}`}>
+                  <Store className="w-6 h-6 text-primary-foreground" />
+                </div>
+                <span className="font-display font-bold text-xl">{settings.appName}</span>
+              </>
+            )}
           </Link>
           <h1 className="font-display text-3xl font-bold mb-2">Create account</h1>
-          <p className="text-muted-foreground">Join ShopHub today</p>
+          {settingsLoading ? (
+            <Skeleton className="h-5 w-40 mx-auto" />
+          ) : (
+            <p className="text-muted-foreground">Join {settings.appName} today</p>
+          )}
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">

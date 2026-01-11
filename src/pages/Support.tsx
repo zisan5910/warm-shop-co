@@ -1,9 +1,9 @@
 import React from 'react';
 import { Layout } from '@/components/layout/Layout';
 import { Phone, MessageCircle, Mail, Clock, MapPin, HelpCircle, Package, CreditCard, Truck } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { useSettings } from '@/hooks/useSettings';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const faqs = [
   {
@@ -12,7 +12,7 @@ const faqs = [
   },
   {
     question: 'What payment methods do you accept?',
-    answer: 'We accept Cash on Delivery (COD) and BKash. For BKash, please send the payment to our merchant number and provide the transaction ID during checkout.',
+    answer: 'We accept Cash on Delivery (COD) and bKash. For bKash, please send the payment to our merchant number and provide the transaction ID during checkout.',
   },
   {
     question: 'Can I return or exchange products?',
@@ -29,7 +29,16 @@ const faqs = [
 ];
 
 const Support = () => {
-  const { settings } = useSettings();
+  const { settings, loading } = useSettings();
+
+  const ContactSkeleton = () => (
+    <div className="flex flex-col items-center p-6 bg-card rounded-xl border border-border">
+      <Skeleton className="w-14 h-14 rounded-full mb-4" />
+      <Skeleton className="h-5 w-20 mb-1" />
+      <Skeleton className="h-4 w-28 mb-3" />
+      <Skeleton className="h-5 w-32" />
+    </div>
+  );
 
   return (
     <Layout>
@@ -46,59 +55,79 @@ const Support = () => {
 
         {/* Contact Options */}
         <div className="grid sm:grid-cols-3 gap-4 mb-12">
-          {settings.phone && (
-            <a
-              href={`tel:${settings.phone}`}
-              className="flex flex-col items-center p-6 bg-card rounded-xl border border-border hover:border-primary transition-colors text-center"
-            >
-              <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-                <Phone className="w-6 h-6 text-primary" />
-              </div>
-              <h3 className="font-semibold mb-1">Call Us</h3>
-              <p className="text-sm text-muted-foreground mb-3">Mon-Sat, 9AM-9PM</p>
-              <span className="text-primary font-medium">{settings.phone}</span>
-            </a>
-          )}
+          {loading ? (
+            <>
+              <ContactSkeleton />
+              <ContactSkeleton />
+              <ContactSkeleton />
+            </>
+          ) : (
+            <>
+              {settings.phone && (
+                <a
+                  href={`tel:${settings.phone}`}
+                  className="flex flex-col items-center p-6 bg-card rounded-xl border border-border hover:border-primary transition-colors text-center"
+                >
+                  <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+                    <Phone className="w-6 h-6 text-primary" />
+                  </div>
+                  <h3 className="font-semibold mb-1">Call Us</h3>
+                  <p className="text-sm text-muted-foreground mb-3">Mon-Sat, 9AM-9PM</p>
+                  <span className="text-primary font-medium">{settings.phone}</span>
+                </a>
+              )}
 
-          {settings.whatsapp && (
-            <a
-              href={`https://wa.me/${settings.whatsapp}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex flex-col items-center p-6 bg-card rounded-xl border border-border hover:border-success transition-colors text-center"
-            >
-              <div className="w-14 h-14 rounded-full bg-success/10 flex items-center justify-center mb-4">
-                <MessageCircle className="w-6 h-6 text-success" />
-              </div>
-              <h3 className="font-semibold mb-1">WhatsApp</h3>
-              <p className="text-sm text-muted-foreground mb-3">Quick responses</p>
-              <span className="text-success font-medium">Chat Now</span>
-            </a>
-          )}
+              {settings.whatsapp && (
+                <a
+                  href={`https://wa.me/${settings.whatsapp}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex flex-col items-center p-6 bg-card rounded-xl border border-border hover:border-success transition-colors text-center"
+                >
+                  <div className="w-14 h-14 rounded-full bg-success/10 flex items-center justify-center mb-4">
+                    <MessageCircle className="w-6 h-6 text-success" />
+                  </div>
+                  <h3 className="font-semibold mb-1">WhatsApp</h3>
+                  <p className="text-sm text-muted-foreground mb-3">Quick responses</p>
+                  <span className="text-success font-medium">Chat Now</span>
+                </a>
+              )}
 
-          {settings.email && (
-            <a
-              href={`mailto:${settings.email}`}
-              className="flex flex-col items-center p-6 bg-card rounded-xl border border-border hover:border-primary transition-colors text-center"
-            >
-              <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-                <Mail className="w-6 h-6 text-primary" />
-              </div>
-              <h3 className="font-semibold mb-1">Email Us</h3>
-              <p className="text-sm text-muted-foreground mb-3">We reply within 24hrs</p>
-              <span className="text-primary font-medium">{settings.email}</span>
-            </a>
-          )}
+              {settings.email && (
+                <a
+                  href={`mailto:${settings.email}`}
+                  className="flex flex-col items-center p-6 bg-card rounded-xl border border-border hover:border-primary transition-colors text-center"
+                >
+                  <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+                    <Mail className="w-6 h-6 text-primary" />
+                  </div>
+                  <h3 className="font-semibold mb-1">Email Us</h3>
+                  <p className="text-sm text-muted-foreground mb-3">We reply within 24hrs</p>
+                  <span className="text-primary font-medium">{settings.email}</span>
+                </a>
+              )}
 
-          {!settings.phone && !settings.whatsapp && !settings.email && (
-            <div className="sm:col-span-3 text-center py-8 text-muted-foreground">
-              <p>Contact information not available. Please check back later.</p>
-            </div>
+              {!settings.phone && !settings.whatsapp && !settings.email && (
+                <div className="sm:col-span-3 text-center py-8 text-muted-foreground">
+                  <p>Contact information not available. Please check back later.</p>
+                </div>
+              )}
+            </>
           )}
         </div>
 
         {/* Location */}
-        {settings.location && (
+        {loading ? (
+          <div className="mb-12 p-6 bg-card rounded-xl border border-border">
+            <div className="flex items-start gap-4">
+              <Skeleton className="w-12 h-12 rounded-full shrink-0" />
+              <div className="flex-1">
+                <Skeleton className="h-5 w-28 mb-2" />
+                <Skeleton className="h-4 w-48" />
+              </div>
+            </div>
+          </div>
+        ) : settings.location ? (
           <div className="mb-12 p-6 bg-card rounded-xl border border-border">
             <div className="flex items-start gap-4">
               <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
@@ -110,7 +139,7 @@ const Support = () => {
               </div>
             </div>
           </div>
-        )}
+        ) : null}
 
         {/* Quick Help Topics */}
         <div className="grid md:grid-cols-4 gap-4 mb-12">

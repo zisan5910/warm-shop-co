@@ -1,8 +1,9 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Home, ShoppingCart, Package, User, Menu, Search, HelpCircle } from 'lucide-react';
+import { Home, ShoppingCart, Package, User, Menu, Search, HelpCircle, Store } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
+import { useSettings } from '@/hooks/useSettings';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,6 +12,7 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 export const Navbar: React.FC = () => {
   const { currentUser, userData, logout } = useAuth();
   const { totalItems } = useCart();
+  const { settings } = useSettings();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -33,10 +35,21 @@ export const Navbar: React.FC = () => {
         <div className="flex items-center justify-between h-14 md:h-16">
           {/* Logo - Mobile shows app name */}
           <Link to="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-primary flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-lg md:text-xl">S</span>
+            {settings.appLogo ? (
+              <img 
+                src={settings.appLogo} 
+                alt={settings.appName} 
+                className="w-8 h-8 md:w-10 md:h-10 rounded-xl object-contain"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                  e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                }}
+              />
+            ) : null}
+            <div className={`w-8 h-8 md:w-10 md:h-10 rounded-xl bg-primary flex items-center justify-center ${settings.appLogo ? 'hidden' : ''}`}>
+              <Store className="w-4 h-4 md:w-5 md:h-5 text-primary-foreground" />
             </div>
-            <span className="font-display font-bold text-lg md:text-xl text-foreground">ShopHub</span>
+            <span className="font-display font-bold text-lg md:text-xl text-foreground">{settings.appName || 'ShopHub'}</span>
           </Link>
 
           {/* Search - Desktop */}

@@ -13,6 +13,13 @@ const DEFAULT_SETTINGS: Settings = {
     dhaka: 60,
     outside_dhaka: 120,
   },
+  appName: 'ShopHub',
+  appLogo: '',
+  phone: '',
+  whatsapp: '',
+  email: '',
+  bkashNumber: '',
+  location: '',
 };
 
 export const useSettings = () => {
@@ -36,6 +43,13 @@ export const useSettings = () => {
               outside_dhaka: data.deliveryCharges?.outside_dhaka ?? 120,
               ...data.deliveryCharges,
             },
+            appName: data.appName ?? 'ShopHub',
+            appLogo: data.appLogo ?? '',
+            phone: data.phone ?? '',
+            whatsapp: data.whatsapp ?? '',
+            email: data.email ?? '',
+            bkashNumber: data.bkashNumber ?? '',
+            location: data.location ?? '',
           });
         } else {
           // Initialize settings if not exists
@@ -63,5 +77,17 @@ export const settingsService = {
 
   async updateDeliveryCharges(deliveryCharges: Settings['deliveryCharges']) {
     await setDoc(doc(db, 'settings', 'main'), { deliveryCharges }, { merge: true });
+  },
+
+  async updateBranding(data: { appName: string; appLogo: string }) {
+    await setDoc(doc(db, 'settings', 'main'), data, { merge: true });
+  },
+
+  async updateContactInfo(data: { phone: string; whatsapp: string; email: string; location: string }) {
+    await setDoc(doc(db, 'settings', 'main'), data, { merge: true });
+  },
+
+  async updatePaymentInfo(data: { bkashNumber: string }) {
+    await setDoc(doc(db, 'settings', 'main'), data, { merge: true });
   },
 };

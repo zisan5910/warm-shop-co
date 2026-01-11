@@ -77,4 +77,15 @@ export interface Settings {
   deliveryCharges: {
     [location: string]: number;
   };
+  // App Branding
+  appName: string;
+  appLogo: string;
+  // Contact Info
+  phone: string;
+  whatsapp: string;
+  email: string;
+  // Payment Info
+  bkashNumber: string;
+  // Location
+  location: string;
 }

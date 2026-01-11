@@ -7,12 +7,13 @@ import { useSettings } from '@/hooks/useSettings';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 
 export const Navbar: React.FC = () => {
   const { currentUser, userData, logout } = useAuth();
   const { totalItems } = useCart();
-  const { settings } = useSettings();
+  const { settings, loading: settingsLoading } = useSettings();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -35,21 +36,30 @@ export const Navbar: React.FC = () => {
         <div className="flex items-center justify-between h-14 md:h-16">
           {/* Logo - Mobile shows app name */}
           <Link to="/" className="flex items-center gap-2">
-            {settings.appLogo ? (
-              <img 
-                src={settings.appLogo} 
-                alt={settings.appName} 
-                className="w-8 h-8 md:w-10 md:h-10 rounded-xl object-contain"
-                onError={(e) => {
-                  e.currentTarget.style.display = 'none';
-                  e.currentTarget.nextElementSibling?.classList.remove('hidden');
-                }}
-              />
-            ) : null}
-            <div className={`w-8 h-8 md:w-10 md:h-10 rounded-xl bg-primary flex items-center justify-center ${settings.appLogo ? 'hidden' : ''}`}>
-              <Store className="w-4 h-4 md:w-5 md:h-5 text-primary-foreground" />
-            </div>
-            <span className="font-display font-bold text-lg md:text-xl text-foreground">{settings.appName || 'ShopHub'}</span>
+            {settingsLoading ? (
+              <>
+                <Skeleton className="w-8 h-8 md:w-10 md:h-10 rounded-xl" />
+                <Skeleton className="w-16 md:w-20 h-5 md:h-6" />
+              </>
+            ) : (
+              <>
+                {settings.appLogo ? (
+                  <img 
+                    src={settings.appLogo} 
+                    alt={settings.appName} 
+                    className="w-8 h-8 md:w-10 md:h-10 rounded-xl object-contain"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                      e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                    }}
+                  />
+                ) : null}
+                <div className={`w-8 h-8 md:w-10 md:h-10 rounded-xl bg-primary flex items-center justify-center ${settings.appLogo ? 'hidden' : ''}`}>
+                  <Store className="w-4 h-4 md:w-5 md:h-5 text-primary-foreground" />
+                </div>
+                <span className="font-display font-bold text-lg md:text-xl text-foreground">{settings.appName}</span>
+              </>
+            )}
           </Link>
 
           {/* Search - Desktop */}

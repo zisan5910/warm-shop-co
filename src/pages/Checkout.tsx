@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Check, ChevronLeft, ChevronRight, Loader2, MapPin, CreditCard, Package } from 'lucide-react';
+import { Check, ChevronLeft, ChevronRight, Loader2, MapPin, CreditCard, Package, Banknote, Smartphone } from 'lucide-react';
 import { toast } from 'sonner';
 import { PaymentMethod } from '@/types';
 
@@ -289,7 +289,7 @@ const Checkout = () => {
                             Pay when you receive your order
                           </p>
                         </div>
-                        <span className="text-2xl">💵</span>
+                        <Banknote className="w-6 h-6 text-success" />
                       </div>
                     )}
 
@@ -311,7 +311,7 @@ const Checkout = () => {
                             Pay via bKash mobile banking
                           </p>
                         </div>
-                        <span className="text-2xl">📱</span>
+                        <Smartphone className="w-6 h-6 text-pink-500" />
                       </div>
                     )}
                   </RadioGroup>
@@ -320,7 +320,7 @@ const Checkout = () => {
                     <div className="p-4 bg-secondary rounded-lg space-y-4">
                       <div className="p-3 bg-primary/10 rounded-lg">
                         <p className="text-sm font-medium mb-1">Send Payment To:</p>
-                        <p className="text-lg font-bold text-primary">01XXXXXXXXX</p>
+                        <p className="text-lg font-bold text-primary">{settings.bkashNumber || 'Not configured'}</p>
                         <p className="text-sm text-muted-foreground mt-1">
                           Amount: <span className="font-bold">৳{grandTotal.toLocaleString()}</span>
                         </p>

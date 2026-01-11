@@ -18,7 +18,9 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order }) => {
             <p className="text-xs text-muted-foreground mb-1">
               {format(order.createdAt, 'MMM dd, yyyy • h:mm a')}
             </p>
-            <p className="text-sm font-medium">Order #{order.id.slice(-8)}</p>
+            <p className="text-sm font-medium text-primary hover:underline">
+              Order #{order.id.slice(-8)}
+            </p>
           </div>
           <OrderStatusBadge status={order.status} />
         </div>
@@ -57,7 +59,10 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order }) => {
               ৳{order.totalAmount.toLocaleString()}
             </p>
           </div>
-          <ChevronRight className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+          <div className="flex items-center gap-1 text-primary text-sm font-medium">
+            <span>View Details</span>
+            <ChevronRight className="w-4 h-4 flex-shrink-0" />
+          </div>
         </div>
       </div>
     </Link>

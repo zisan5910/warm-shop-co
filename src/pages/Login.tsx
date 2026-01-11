@@ -1,15 +1,18 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSettings } from '@/hooks/useSettings';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, Eye, EyeOff } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Loader2, Eye, EyeOff, Store } from 'lucide-react';
 import { toast } from 'sonner';
 
 const Login = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
+  const { settings, loading: settingsLoading } = useSettings();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -35,9 +38,30 @@ const Login = () => {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <Link to="/" className="inline-flex items-center gap-2 mb-6">
-            <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-2xl">S</span>
-            </div>
+            {settingsLoading ? (
+              <>
+                <Skeleton className="w-12 h-12 rounded-xl" />
+                <Skeleton className="w-24 h-6" />
+              </>
+            ) : (
+              <>
+                {settings.appLogo ? (
+                  <img 
+                    src={settings.appLogo} 
+                    alt={settings.appName} 
+                    className="w-12 h-12 rounded-xl object-contain"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                      e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                    }}
+                  />
+                ) : null}
+                <div className={`w-12 h-12 rounded-xl bg-primary flex items-center justify-center ${settings.appLogo ? 'hidden' : ''}`}>
+                  <Store className="w-6 h-6 text-primary-foreground" />
+                </div>
+                <span className="font-display font-bold text-xl">{settings.appName}</span>
+              </>
+            )}
           </Link>
           <h1 className="font-display text-3xl font-bold mb-2">Welcome back</h1>
           <p className="text-muted-foreground">Sign in to your account</p>
@@ -96,12 +120,6 @@ const Login = () => {
             Sign up
           </Link>
         </p>
-
-        <div className="mt-8 pt-8 border-t border-border text-center">
-          <Link to="/admin/login" className="text-sm text-muted-foreground hover:text-foreground">
-            Admin Login →
-          </Link>
-        </div>
       </div>
     </div>
   );

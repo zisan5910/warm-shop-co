@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Pencil, Trash2, Loader2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Loader2, Package } from 'lucide-react';
 import { toast } from 'sonner';
 import { Product } from '@/types';
 import { useState } from 'react';
@@ -219,7 +219,7 @@ const AdminProducts = () => {
       ) : products.length === 0 ? (
         <div className="bg-card rounded-xl border border-border p-12 text-center">
           <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-secondary flex items-center justify-center">
-            <span className="text-2xl">📦</span>
+            <Package className="w-8 h-8 text-muted-foreground" />
           </div>
           <h3 className="font-semibold text-lg mb-2">No products yet</h3>
           <p className="text-muted-foreground text-sm mb-4">

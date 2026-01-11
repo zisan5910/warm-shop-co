@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { Package } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
 import { HeroSection } from '@/components/home/HeroSection';
 import { BannerSlider } from '@/components/home/BannerSlider';
@@ -112,7 +113,7 @@ const Index = () => {
           ) : filteredProducts.length === 0 ? (
             <div className="text-center py-12 bg-card rounded-xl border border-border">
               <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-secondary flex items-center justify-center">
-                <span className="text-2xl">📦</span>
+                <Package className="w-8 h-8 text-muted-foreground" />
               </div>
               <h3 className="font-semibold text-lg mb-2">No products found</h3>
               <p className="text-muted-foreground text-sm mb-4">

@@ -3,7 +3,7 @@ import { useProducts, useCategories, useBanners, useCoupons, useAllOrders, useAl
 import { ChevronDown as ChevronDownIcon, ChevronUp as ChevronUpIcon } from 'lucide-react';
 import { uploadImageToImgBB } from '@/lib/imgbb';
 import { useAuth } from '@/contexts/AuthContext';
-import { Package, Users, Tag, TrendingUp, Edit, Trash2, Plus, Save, X, Ticket, Menu, LayoutDashboard, ImageIcon, BadgePercent, ClipboardList, UserCog, Cog, DollarSign, Clock, ExternalLink, ChevronDown, ChevronUp, Eye } from 'lucide-react';
+import { Package, Users, Tag, TrendingUp, Edit, Trash2, Plus, Save, X, Ticket, Menu, LayoutDashboard, ImageIcon, BadgePercent, ClipboardList, UserCog, Cog, DollarSign, Clock, ExternalLink, ChevronDown, ChevronUp, Eye, Monitor, Globe, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -63,23 +63,28 @@ export default function AdminPage() {
   const saveProduct = async () => {
     setSaving(true);
     try {
-      // Find selected category
       const selectedCat = categories.find(c => c.id === form.categoryId);
-      const data = {
+      const isDigital = !!form.isDigital;
+      const data: any = {
         ...form,
         price: Number(form.price) || 0,
         originalPrice: Number(form.originalPrice) || 0,
-        stock: Number(form.stock) || 0,
+        stock: isDigital ? 999 : (Number(form.stock) || 0),
         rating: Number(form.rating) || 0,
         reviewCount: Number(form.reviewCount) || 0,
         sold: Number(form.sold) || 0,
         featured: !!form.featured,
+        isDigital,
         images: form.images || [],
         tags: form.tags ? (typeof form.tags === 'string' ? form.tags.split(',').map((t: string) => t.trim()) : form.tags) : [],
-        sizes: form.sizes ? (typeof form.sizes === 'string' ? form.sizes.split(',').map((t: string) => t.trim()) : form.sizes) : [],
-        colors: form.colors ? (typeof form.colors === 'string' ? form.colors.split(',').map((t: string) => t.trim()) : form.colors) : [],
+        sizes: isDigital ? [] : (form.sizes ? (typeof form.sizes === 'string' ? form.sizes.split(',').map((t: string) => t.trim()) : form.sizes) : []),
+        colors: isDigital ? [] : (form.colors ? (typeof form.colors === 'string' ? form.colors.split(',').map((t: string) => t.trim()) : form.colors) : []),
         category: selectedCat?.name || form.category || '',
         categoryId: form.categoryId || '',
+        order: Number(form.order) ?? 0,
+        demoUrl: form.demoUrl || '',
+        sourceCodeUrl: form.sourceCodeUrl || '',
+        filePassword: form.filePassword || '',
       };
       delete data.id;
       if (dialog?.item?.id) await updateProduct(dialog.item.id, data);
@@ -102,10 +107,19 @@ export default function AdminPage() {
     const sorted = [...categories];
     const swapIdx = direction === 'up' ? index - 1 : index + 1;
     if (swapIdx < 0 || swapIdx >= sorted.length) return;
-    // Swap orders
     await Promise.all([
       updateCategory(sorted[index].id, { order: sorted[swapIdx].order ?? swapIdx }),
       updateCategory(sorted[swapIdx].id, { order: sorted[index].order ?? index }),
+    ]);
+  };
+
+  const moveProductOrder = async (index: number, direction: 'up' | 'down') => {
+    const sorted = [...products];
+    const swapIdx = direction === 'up' ? index - 1 : index + 1;
+    if (swapIdx < 0 || swapIdx >= sorted.length) return;
+    await Promise.all([
+      updateProduct(sorted[index].id, { order: sorted[swapIdx].order ?? swapIdx }),
+      updateProduct(sorted[swapIdx].id, { order: sorted[index].order ?? index }),
     ]);
   };
 
@@ -235,16 +249,24 @@ export default function AdminPage() {
               <h2 className="font-bold text-xl">{products.length} Products</h2>
               <Button size="sm" className="h-8 gap-1 text-xs" onClick={() => openDialog('product')}><Plus size={12} /> Add Product</Button>
             </div>
+            <p className="text-xs text-muted-foreground mb-3">↑↓ বাটন দিয়ে প্রোডাক্টের সিরিয়াল পরিবর্তন করুন</p>
             <div className="space-y-2">
-              {products.map(p => (
+              {products.map((p, idx) => (
                 <div key={p.id} className="flex items-center gap-3 bg-card border border-border rounded-xl p-3">
+                  <div className="flex flex-col gap-0.5">
+                    <button onClick={() => moveProductOrder(idx, 'up')} disabled={idx === 0} className="p-0.5 hover:bg-muted rounded disabled:opacity-20"><ChevronUpIcon size={14} /></button>
+                    <button onClick={() => moveProductOrder(idx, 'down')} disabled={idx === products.length - 1} className="p-0.5 hover:bg-muted rounded disabled:opacity-20"><ChevronDownIcon size={14} /></button>
+                  </div>
                   <img src={p.images?.[0] || '/placeholder.svg'} alt={p.name} className="w-12 h-12 rounded-lg object-cover" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{p.name}</p>
-                    <p className="text-xs text-muted-foreground">{p.brand} &middot; ৳{p.price} &middot; {p.category}</p>
+                    <div className="flex items-center gap-1">
+                      <p className="text-sm font-medium truncate">{p.name}</p>
+                      {p.isDigital && <span className="text-[10px] font-semibold text-primary bg-primary/10 px-1 py-0.5 rounded">Digital</span>}
+                    </div>
+                    <p className="text-xs text-muted-foreground">{p.brand} · ৳{p.price} · {p.category}</p>
                   </div>
                   <div className="flex items-center gap-1">
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${p.stock > 0 ? 'bg-green-500/10 text-green-600' : 'bg-destructive/10 text-destructive'}`}>{p.stock > 0 ? `${p.stock}` : 'Out'}</span>
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${p.isDigital ? 'bg-primary/10 text-primary' : p.stock > 0 ? 'bg-green-500/10 text-green-600' : 'bg-destructive/10 text-destructive'}`}>{p.isDigital ? 'Digital' : p.stock > 0 ? `${p.stock}` : 'Out'}</span>
                     <button onClick={() => openDialog('product', p)} className="p-1.5 hover:bg-muted rounded-lg"><Edit size={13} /></button>
                     <button onClick={() => deleteProduct(p.id)} className="p-1.5 hover:bg-destructive/10 rounded-lg text-destructive"><Trash2 size={13} /></button>
                   </div>
@@ -563,39 +585,54 @@ export default function AdminPage() {
         <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{dialog?.item ? 'Edit Product' : 'Add Product'}</DialogTitle></DialogHeader>
           <div className="space-y-3">
+            {/* Digital Product Toggle */}
+            <div className="flex items-center gap-2 p-3 bg-primary/5 border border-primary/20 rounded-xl">
+              <Switch checked={!!form.isDigital} onCheckedChange={v => setForm((f: any) => ({ ...f, isDigital: v }))} />
+              <Label className="flex items-center gap-1"><Monitor size={14} className="text-primary" /> Digital Product</Label>
+            </div>
+
             <div className="space-y-1.5"><Label>Name</Label><Input value={form.name || ''} onChange={e => setForm((f: any) => ({ ...f, name: e.target.value }))} /></div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5"><Label>Price (৳)</Label><Input type="number" value={form.price || ''} onChange={e => setForm((f: any) => ({ ...f, price: e.target.value }))} /></div>
               <div className="space-y-1.5"><Label>Original Price (৳)</Label><Input type="number" value={form.originalPrice || ''} onChange={e => setForm((f: any) => ({ ...f, originalPrice: e.target.value }))} /></div>
             </div>
-            {/* Category Dropdown */}
             <div className="space-y-1.5">
               <Label>Category</Label>
-              <select
-                value={form.categoryId || ''}
-                onChange={e => {
-                  const cat = categories.find(c => c.id === e.target.value);
-                  setForm((f: any) => ({ ...f, categoryId: e.target.value, category: cat?.name || '' }));
-                }}
-                className="w-full h-10 rounded-xl border border-input bg-background px-3 text-sm"
-              >
+              <select value={form.categoryId || ''} onChange={e => { const cat = categories.find(c => c.id === e.target.value); setForm((f: any) => ({ ...f, categoryId: e.target.value, category: cat?.name || '' })); }} className="w-full h-10 rounded-xl border border-input bg-background px-3 text-sm">
                 <option value="">Select Category</option>
                 {categories.map(cat => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
               </select>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5"><Label>Brand</Label><Input value={form.brand || ''} onChange={e => setForm((f: any) => ({ ...f, brand: e.target.value }))} /></div>
-              <div className="space-y-1.5"><Label>Stock</Label><Input type="number" value={form.stock || ''} onChange={e => setForm((f: any) => ({ ...f, stock: e.target.value }))} /></div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5"><Label>Rating (0-5)</Label><Input type="number" step="0.1" min="0" max="5" value={form.rating || ''} onChange={e => setForm((f: any) => ({ ...f, rating: e.target.value }))} /></div>
               <div className="space-y-1.5"><Label>Review Count</Label><Input type="number" value={form.reviewCount || ''} onChange={e => setForm((f: any) => ({ ...f, reviewCount: e.target.value }))} /></div>
             </div>
+
+            {!form.isDigital && (
+              <>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5"><Label>Brand</Label><Input value={form.brand || ''} onChange={e => setForm((f: any) => ({ ...f, brand: e.target.value }))} /></div>
+                  <div className="space-y-1.5"><Label>Stock</Label><Input type="number" value={form.stock || ''} onChange={e => setForm((f: any) => ({ ...f, stock: e.target.value }))} /></div>
+                </div>
+                <div className="space-y-1.5"><Label>Sizes (comma separated)</Label><Input value={Array.isArray(form.sizes) ? form.sizes.join(', ') : form.sizes || ''} onChange={e => setForm((f: any) => ({ ...f, sizes: e.target.value }))} placeholder="S, M, L, XL" /></div>
+                <div className="space-y-1.5"><Label>Colors (comma separated)</Label><Input value={Array.isArray(form.colors) ? form.colors.join(', ') : form.colors || ''} onChange={e => setForm((f: any) => ({ ...f, colors: e.target.value }))} placeholder="Red, Blue, Green" /></div>
+              </>
+            )}
+
             <div className="space-y-1.5"><Label>Description</Label><textarea value={form.description || ''} onChange={e => setForm((f: any) => ({ ...f, description: e.target.value }))} className="w-full h-20 rounded-xl border border-input bg-background px-3 py-2 text-sm resize-none" /></div>
-            <div className="space-y-1.5"><Label>Sizes (comma separated)</Label><Input value={Array.isArray(form.sizes) ? form.sizes.join(', ') : form.sizes || ''} onChange={e => setForm((f: any) => ({ ...f, sizes: e.target.value }))} placeholder="S, M, L, XL" /></div>
-            <div className="space-y-1.5"><Label>Colors (comma separated)</Label><Input value={Array.isArray(form.colors) ? form.colors.join(', ') : form.colors || ''} onChange={e => setForm((f: any) => ({ ...f, colors: e.target.value }))} placeholder="Red, Blue, Green" /></div>
             <div className="space-y-1.5"><Label>Tags (comma separated)</Label><Input value={Array.isArray(form.tags) ? form.tags.join(', ') : form.tags || ''} onChange={e => setForm((f: any) => ({ ...f, tags: e.target.value }))} /></div>
             <div className="flex items-center gap-2"><Switch checked={!!form.featured} onCheckedChange={v => setForm((f: any) => ({ ...f, featured: v }))} /><Label>Featured</Label></div>
+
+            {/* Digital Product Fields */}
+            {form.isDigital && (
+              <div className="space-y-3 p-3 bg-muted/50 rounded-xl border border-border">
+                <p className="text-xs font-semibold text-primary flex items-center gap-1"><Monitor size={12} /> Digital Product Fields</p>
+                <div className="space-y-1.5"><Label className="text-xs flex items-center gap-1"><Globe size={12} /> Demo URL</Label><Input value={form.demoUrl || ''} onChange={e => setForm((f: any) => ({ ...f, demoUrl: e.target.value }))} placeholder="https://demo.example.com" /></div>
+                <div className="space-y-1.5"><Label className="text-xs flex items-center gap-1"><ExternalLink size={12} /> Source Code / Download URL</Label><Input value={form.sourceCodeUrl || ''} onChange={e => setForm((f: any) => ({ ...f, sourceCodeUrl: e.target.value }))} placeholder="https://drive.google.com/..." /></div>
+                <div className="space-y-1.5"><Label className="text-xs flex items-center gap-1"><Lock size={12} /> File Password (optional)</Label><Input value={form.filePassword || ''} onChange={e => setForm((f: any) => ({ ...f, filePassword: e.target.value }))} placeholder="Password for the file" /></div>
+              </div>
+            )}
+
             <div className="space-y-1.5">
               <Label>Images</Label>
               <div className="flex gap-2 flex-wrap">{(form.images || []).map((img: string, i: number) => (

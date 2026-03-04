@@ -20,7 +20,13 @@ export interface Product {
   tags: string[];
   featured: boolean;
   sold: number;
+  order?: number;
   createdAt: any;
+  // Digital product fields
+  isDigital?: boolean;
+  demoUrl?: string;
+  sourceCodeUrl?: string;
+  filePassword?: string;
 }
 
 export interface Category {
@@ -48,7 +54,7 @@ export interface Coupon {
   maxDiscount: number;
   active: boolean;
   expiresAt?: any;
-  userId?: string; // For loyalty-point-generated coupons
+  userId?: string;
   pointsUsed?: number;
 }
 
@@ -72,6 +78,7 @@ export interface Order {
   statusHistory: any[];
   createdAt: any;
   deliveredAt?: any;
+  isDigitalOrder?: boolean;
 }
 
 export interface DeliveryArea {
@@ -113,7 +120,9 @@ export function useProducts() {
   useEffect(() => {
     const q = query(collection(db, 'products'), orderBy('createdAt', 'desc'));
     const unsub = onSnapshot(q, snap => {
-      setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() } as Product)));
+      const prods = snap.docs.map(d => ({ id: d.id, ...d.data() } as Product));
+      prods.sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
+      setProducts(prods);
       setLoading(false);
     }, () => setLoading(false));
     return unsub;
@@ -183,13 +192,11 @@ export function useOrders(userId?: string) {
   const [loading, setLoading] = useState(true);
   useEffect(() => {
     if (!userId) { setLoading(false); setOrders([]); return; }
-    // Try with orderBy first; fallback if index missing
     const q = query(collection(db, 'orders'), where('userId', '==', userId), orderBy('createdAt', 'desc'));
     const unsub = onSnapshot(q, snap => {
       setOrders(snap.docs.map(d => ({ id: d.id, ...d.data() } as Order)));
       setLoading(false);
     }, () => {
-      // Fallback without orderBy
       const q2 = query(collection(db, 'orders'), where('userId', '==', userId));
       onSnapshot(q2, snap2 => {
         const sorted = snap2.docs.map(d => ({ id: d.id, ...d.data() } as Order))
@@ -212,7 +219,6 @@ export function useAllOrders() {
       setOrders(snap.docs.map(d => ({ id: d.id, ...d.data() } as Order)));
       setLoading(false);
     }, () => {
-      // Fallback without orderBy
       onSnapshot(collection(db, 'orders'), snap2 => {
         const sorted = snap2.docs.map(d => ({ id: d.id, ...d.data() } as Order))
           .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
@@ -298,25 +304,21 @@ export const bindReferral = async (userId: string, referrerCode: string) => {
 
 export const validateCoupon = async (code: string, userId?: string) => {
   const upperCode = code.toUpperCase();
-  // Check general coupons
   const q = query(collection(db, 'coupons'), where('code', '==', upperCode), where('active', '==', true));
   const snap = await getDocs(q);
   if (!snap.empty) {
     const coupon = { id: snap.docs[0].id, ...snap.docs[0].data() } as Coupon;
-    // If coupon is user-specific, verify ownership
     if (coupon.userId && coupon.userId !== userId) return null;
     return coupon;
   }
   return null;
 };
 
-// Generate a loyalty coupon for a user based on their points
 export const generateLoyaltyCoupon = async (userId: string, pointsToUse: number, pointsPerTaka: number) => {
   if (pointsToUse <= 0 || pointsPerTaka <= 0) throw new Error('Invalid points');
   const discountTaka = Math.floor(pointsToUse / pointsPerTaka);
   if (discountTaka <= 0) throw new Error('Not enough points');
 
-  // Check if user already has an active loyalty coupon
   const existing = query(collection(db, 'coupons'), where('userId', '==', userId), where('active', '==', true));
   const existingSnap = await getDocs(existing);
   if (!existingSnap.empty) {
@@ -326,7 +328,7 @@ export const generateLoyaltyCoupon = async (userId: string, pointsToUse: number,
   const code = `LOYALTY-${userId.slice(0, 6).toUpperCase()}-${Date.now().toString(36).toUpperCase()}`;
   const couponData: Omit<Coupon, 'id'> = {
     code,
-    discountPercent: 0, // flat discount, not percent
+    discountPercent: 0,
     minOrder: 0,
     maxDiscount: discountTaka,
     active: true,
@@ -334,7 +336,6 @@ export const generateLoyaltyCoupon = async (userId: string, pointsToUse: number,
     pointsUsed: pointsToUse,
   };
   const ref = await addDoc(collection(db, 'coupons'), couponData);
-  // Deduct points from user
   const userRef = doc(db, 'users', userId);
   const userSnap = await getDoc(userRef);
   const currentPoints = userSnap.data()?.loyaltyPoints || 0;

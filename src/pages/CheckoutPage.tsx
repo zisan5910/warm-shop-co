@@ -9,14 +9,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { collection, addDoc, serverTimestamp, doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { Check, MapPin, Truck, CreditCard, ChevronRight, Banknote, Smartphone, Copy, Upload, ImageIcon, Tag, X, Gift, Shield, RotateCcw, CheckCircle } from 'lucide-react';
+import { Check, MapPin, Truck, CreditCard, ChevronRight, Banknote, Smartphone, Copy, Upload, ImageIcon, Tag, X, Gift, Shield, RotateCcw, CheckCircle, Monitor } from 'lucide-react';
 import { motion } from 'framer-motion';
-
-const steps = [
-  { id: 1, label: 'Shipping', icon: MapPin },
-  { id: 2, label: 'Delivery', icon: Truck },
-  { id: 3, label: 'Payment', icon: CreditCard },
-];
 
 export default function CheckoutPage() {
   const { items: cartItems, total: cartTotal, clearCart } = useCart();
@@ -33,7 +27,7 @@ export default function CheckoutPage() {
   const [couponError, setCouponError] = useState('');
 
   const stateItems = location.state?.selectedItems || cartItems;
-  // Pre-applied discount from cart page
+  const isDigitalOrder = location.state?.isDigitalOrder || stateItems.every((i: any) => i.isDigital);
   const stateDiscount = location.state?.discount || 0;
   const stateCouponCode = location.state?.couponCode || '';
   const stateCouponData = location.state?.couponData || null;
@@ -42,27 +36,29 @@ export default function CheckoutPage() {
 
   const [shipping, setShipping] = useState({ name: '', phone: '', address: '' });
   const [selectedDelivery, setSelectedDelivery] = useState<'standard' | 'express'>('standard');
-  const [paymentMethod, setPaymentMethod] = useState<'cod' | 'mobile'>('cod');
+  const [paymentMethod, setPaymentMethod] = useState<'cod' | 'mobile'>(isDigitalOrder ? 'mobile' : 'cod');
   const [mobilePayment, setMobilePayment] = useState({ method: 'bKash', number: '', transactionId: '', screenshot: '' });
 
   const deliveryAreas = settings.deliveryAreas || [];
   const [selectedAreaIndex, setSelectedAreaIndex] = useState<number>(-1);
 
-  const deliveryOptions = [
+  const deliveryCharge = isDigitalOrder ? 0 : (() => {
+    const base = selectedAreaIndex >= 0 ? deliveryAreas[selectedAreaIndex]?.charge : (settings.deliveryCharge || 60);
+    return selectedDelivery === 'express' ? base * 2 : base;
+  })();
+
+  const deliveryOptions = isDigitalOrder ? [] : [
     { id: 'standard', label: 'Standard Delivery', time: '৩-৫ কার্যদিবস', price: selectedAreaIndex >= 0 ? deliveryAreas[selectedAreaIndex]?.charge : (settings.deliveryCharge || 60) },
     { id: 'express', label: 'Express Delivery', time: '১-২ কার্যদিবস', price: (selectedAreaIndex >= 0 ? deliveryAreas[selectedAreaIndex]?.charge : (settings.deliveryCharge || 60)) * 2 },
   ];
   const deliveryOpt = deliveryOptions.find(d => d.id === selectedDelivery) || deliveryOptions[0];
-  const deliveryCharge = deliveryOpt.price;
 
-  // Discount calculation
   let discountAmount = 0;
   let effectiveCouponCode = stateCouponCode;
   if (appliedCoupon) {
     if (appliedCoupon.discountPercent > 0) {
       discountAmount = Math.min((subtotal * appliedCoupon.discountPercent) / 100, appliedCoupon.maxDiscount || Infinity);
     } else if (appliedCoupon.maxDiscount > 0) {
-      // Flat discount (loyalty coupon)
       discountAmount = Math.min(appliedCoupon.maxDiscount, subtotal);
     }
     effectiveCouponCode = appliedCoupon.code;
@@ -71,7 +67,11 @@ export default function CheckoutPage() {
   }
   const finalTotal = subtotal - discountAmount + deliveryCharge;
 
-  // Autofill from user profile
+  // For digital orders, skip shipping & delivery steps
+  const steps = isDigitalOrder
+    ? [{ id: 1, label: 'Contact', icon: MapPin }, { id: 2, label: 'Payment', icon: CreditCard }]
+    : [{ id: 1, label: 'Shipping', icon: MapPin }, { id: 2, label: 'Delivery', icon: Truck }, { id: 3, label: 'Payment', icon: CreditCard }];
+
   useEffect(() => {
     if (user) {
       const fetchProfile = async () => {
@@ -96,14 +96,9 @@ export default function CheckoutPage() {
     setCouponLoading(true);
     try {
       const found = await validateCoupon(couponCode.trim(), user?.uid);
-      if (found) {
-        setAppliedCoupon(found);
-      } else {
-        setCouponError('Invalid or expired coupon code');
-      }
-    } finally {
-      setCouponLoading(false);
-    }
+      if (found) setAppliedCoupon(found);
+      else setCouponError('Invalid or expired coupon code');
+    } finally { setCouponLoading(false); }
   };
 
   const handleScreenshotUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -113,21 +108,14 @@ export default function CheckoutPage() {
     try {
       const url = await uploadImageToImgBB(file);
       setMobilePayment(m => ({ ...m, screenshot: url }));
-    } catch { } finally {
-      setScreenshotUploading(false);
-    }
+    } catch { } finally { setScreenshotUploading(false); }
   };
 
   const placeOrder = async () => {
-    if (!user) {
-      navigate('/auth');
-      return;
-    }
+    if (!user) { navigate('/auth'); return; }
     setLoading(true);
     try {
-      // Add loyalty points for the purchase (1 point per 10 taka)
       const earnedPoints = Math.floor(finalTotal / 10);
-
       const orderData = {
         userId: user.uid,
         userEmail: user.email || '',
@@ -141,20 +129,21 @@ export default function CheckoutPage() {
           quantity: Number(item.quantity) || 1,
           selectedSize: item.selectedSize || '',
           selectedColor: item.selectedColor || '',
+          isDigital: !!item.isDigital,
         })),
         shipping: {
           name: shipping.name || '',
           phone: shipping.phone || '',
-          address: shipping.address || '',
+          address: isDigitalOrder ? 'Digital Product' : (shipping.address || ''),
         },
-        delivery: {
-          id: deliveryOpt.id || 'standard',
-          label: deliveryOpt.label || '',
-          time: deliveryOpt.time || '',
-          price: Number(deliveryOpt.price) || 0,
+        delivery: isDigitalOrder ? { id: 'digital', label: 'Digital Delivery', time: 'Instant', price: 0 } : {
+          id: deliveryOpt?.id || 'standard',
+          label: deliveryOpt?.label || '',
+          time: deliveryOpt?.time || '',
+          price: Number(deliveryOpt?.price) || 0,
         },
         payment: {
-          method: paymentMethod || 'cod',
+          method: paymentMethod || 'mobile',
           ...(paymentMethod === 'mobile' ? {
             method2: mobilePayment.method || '',
             number: mobilePayment.number || '',
@@ -171,54 +160,57 @@ export default function CheckoutPage() {
         earnedPoints: Number(earnedPoints) || 0,
         status: 'processing',
         statusHistory: [{ status: 'processing', timestamp: new Date().toISOString() }],
+        isDigitalOrder: !!isDigitalOrder,
         createdAt: serverTimestamp(),
       };
 
-      console.log('Placing order...', orderData);
       const docRef = await addDoc(collection(db, 'orders'), orderData);
-      console.log('Order placed successfully:', docRef.id);
 
-      // Award loyalty points
       if (earnedPoints > 0) {
         try {
           const userRef = doc(db, 'users', user.uid);
           const userSnap = await getDoc(userRef);
           const currentPoints = userSnap.data()?.loyaltyPoints || 0;
           await updateDoc(userRef, { loyaltyPoints: currentPoints + earnedPoints });
-        } catch (pointsErr) {
-          console.warn('Could not award loyalty points:', pointsErr);
-        }
+        } catch {}
       }
 
-      // Delete coupon after use — only delete user-specific (loyalty) coupons, admin coupons are unlimited
       const couponToDelete = appliedCoupon || stateCouponData;
       if (couponToDelete?.id && couponToDelete?.userId) {
         try {
           const { deleteCoupon } = await import('@/hooks/useFirestoreData');
           await deleteCoupon(couponToDelete.id);
-        } catch (couponErr) {
-          console.warn('Could not delete coupon:', couponErr);
-        }
+        } catch {}
       }
 
       await clearCart();
       if (user) refreshUserData();
       navigate('/order-success', { state: { orderId: docRef.id, earnedPoints } });
     } catch (err: any) {
-      console.error('Order error:', err);
       alert('অর্ডার সেভ করতে সমস্যা হয়েছে: ' + (err?.message || 'Unknown error'));
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   };
 
   const sf = (k: string, v: string) => setShipping(s => ({ ...s, [k]: v }));
   const copyNum = (num: string) => navigator.clipboard.writeText(num);
 
+  // For digital: step 1 = contact info, step 2 = payment
+  // For physical: step 1 = shipping, step 2 = delivery, step 3 = payment
+  const paymentStep = isDigitalOrder ? 2 : 3;
+
   return (
     <div className="max-w-screen-md mx-auto px-4 py-5 pb-nav lg:pb-8">
       <h1 className="font-bold text-xl mb-2">Checkout</h1>
-      <p className="text-sm text-muted-foreground mb-5">আপনার অর্ডার নিশ্চিত করুন</p>
+      <p className="text-sm text-muted-foreground mb-5">
+        {isDigitalOrder ? 'ডিজিটাল প্রোডাক্ট অর্ডার নিশ্চিত করুন' : 'আপনার অর্ডার নিশ্চিত করুন'}
+      </p>
+
+      {isDigitalOrder && (
+        <div className="mb-4 bg-primary/5 border border-primary/20 rounded-xl p-3 flex items-center gap-2">
+          <Monitor size={16} className="text-primary shrink-0" />
+          <p className="text-xs text-primary font-medium">এটি একটি ডিজিটাল প্রোডাক্ট। পেমেন্ট কনফার্ম হলে ডাউনলোড লিংক পাবেন।</p>
+        </div>
+      )}
 
       {/* Step Indicator */}
       <div className="flex items-center mb-6">
@@ -235,7 +227,7 @@ export default function CheckoutPage() {
         ))}
       </div>
 
-      {/* Order Summary - always visible, detailed */}
+      {/* Order Summary */}
       <div className="mb-5 bg-card border border-border rounded-xl overflow-hidden">
         <details open>
           <summary className="p-4 text-sm font-semibold cursor-pointer flex justify-between items-center select-none">
@@ -243,26 +235,23 @@ export default function CheckoutPage() {
             <span className="text-primary font-bold">৳{finalTotal.toFixed(0)}</span>
           </summary>
           <div className="px-4 pb-4 space-y-3 border-t border-border">
-            {/* Item list */}
             <div className="space-y-2 pt-3">
               {stateItems.map((item: any, idx: number) => (
                 <div key={`${item.productId}-${idx}`} className="flex items-center gap-3">
                   <img src={item.image} alt={item.name} className="w-10 h-10 rounded-lg object-cover shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-medium truncate">{item.name}</p>
-                    {(item.selectedSize || item.selectedColor) && (
-                      <p className="text-[10px] text-muted-foreground">{item.selectedColor} {item.selectedSize}</p>
-                    )}
+                    {item.isDigital && <span className="text-[10px] text-primary font-medium">Digital</span>}
+                    {(item.selectedSize || item.selectedColor) && <p className="text-[10px] text-muted-foreground">{item.selectedColor} {item.selectedSize}</p>}
                     <p className="text-xs text-muted-foreground">৳{item.price} × {item.quantity || 1}</p>
                   </div>
                   <span className="text-xs font-bold">৳{(item.price * (item.quantity || 1)).toFixed(0)}</span>
                 </div>
               ))}
             </div>
-            {/* Totals */}
             <div className="pt-3 border-t border-border space-y-1.5 text-sm">
               <div className="flex justify-between"><span className="text-muted-foreground">Subtotal</span><span>৳{subtotal.toFixed(0)}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Delivery</span><span>৳{deliveryCharge}</span></div>
+              {!isDigitalOrder && <div className="flex justify-between"><span className="text-muted-foreground">Delivery</span><span>৳{deliveryCharge}</span></div>}
               {discountAmount > 0 && <div className="flex justify-between text-green-600"><span>Discount</span><span>-৳{discountAmount.toFixed(0)}</span></div>}
               <div className="flex justify-between font-bold text-base border-t border-border pt-2"><span>Total</span><span className="text-primary">৳{finalTotal.toFixed(0)}</span></div>
             </div>
@@ -270,43 +259,36 @@ export default function CheckoutPage() {
         </details>
       </div>
 
-      {/* Step 1: Shipping */}
+      {/* Step 1: Shipping / Contact */}
       {step === 1 && (
         <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-4">
-          <h2 className="font-bold">Shipping Address</h2>
+          <h2 className="font-bold">{isDigitalOrder ? 'Contact Information' : 'Shipping Address'}</h2>
           <div className="space-y-3">
             <div className="space-y-1.5"><Label>Full Name *</Label><Input value={shipping.name} onChange={e => sf('name', e.target.value)} placeholder="আপনার পূর্ণ নাম" required /></div>
             <div className="space-y-1.5"><Label>Phone Number *</Label><Input value={shipping.phone} onChange={e => sf('phone', e.target.value)} placeholder="+880XXXXXXXXXX" required /></div>
-            <div className="space-y-1.5"><Label>Detailed Address *</Label><Input value={shipping.address} onChange={e => sf('address', e.target.value)} placeholder="বাড়ি নং, রোড, এলাকা, জেলা" required /></div>
+            {!isDigitalOrder && (
+              <div className="space-y-1.5"><Label>Detailed Address *</Label><Input value={shipping.address} onChange={e => sf('address', e.target.value)} placeholder="বাড়ি নং, রোড, এলাকা, জেলা" required /></div>
+            )}
           </div>
-          <Button className="w-full h-12 font-semibold" onClick={() => setStep(2)} disabled={!shipping.name || !shipping.phone || !shipping.address}>
+          <Button className="w-full h-12 font-semibold" onClick={() => setStep(2)} disabled={!shipping.name || !shipping.phone || (!isDigitalOrder && !shipping.address)}>
             Continue <ChevronRight size={16} className="ml-2" />
           </Button>
         </motion.div>
       )}
 
-      {/* Step 2: Delivery */}
-      {step === 2 && (
+      {/* Step 2: Delivery (physical only) */}
+      {step === 2 && !isDigitalOrder && (
         <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-4">
           <h2 className="font-bold">Delivery Options</h2>
-
-          {/* Delivery Area Selection */}
           {deliveryAreas.length > 0 && (
             <div className="space-y-1.5">
               <Label>Delivery Area</Label>
-              <select
-                value={selectedAreaIndex}
-                onChange={e => setSelectedAreaIndex(Number(e.target.value))}
-                className="w-full h-10 rounded-xl border border-input bg-background px-3 text-sm"
-              >
+              <select value={selectedAreaIndex} onChange={e => setSelectedAreaIndex(Number(e.target.value))} className="w-full h-10 rounded-xl border border-input bg-background px-3 text-sm">
                 <option value={-1}>Default — ৳{settings.deliveryCharge || 60}</option>
-                {deliveryAreas.map((area, i) => (
-                  <option key={i} value={i}>{area.name} — ৳{area.charge}</option>
-                ))}
+                {deliveryAreas.map((area, i) => <option key={i} value={i}>{area.name} — ৳{area.charge}</option>)}
               </select>
             </div>
           )}
-
           <div className="space-y-3">
             {deliveryOptions.map(opt => (
               <label key={opt.id} className={`flex items-center gap-4 p-4 rounded-xl border cursor-pointer transition-all ${selectedDelivery === opt.id ? 'border-primary bg-primary/5' : 'border-border'}`}>
@@ -324,8 +306,8 @@ export default function CheckoutPage() {
         </motion.div>
       )}
 
-      {/* Step 3: Payment */}
-      {step === 3 && (
+      {/* Payment Step */}
+      {step === paymentStep && (
         <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-4">
           <h2 className="font-bold">Payment Method</h2>
 
@@ -353,70 +335,82 @@ export default function CheckoutPage() {
           </div>
 
           <div className="space-y-3">
-            <label className={`flex items-center gap-4 p-4 rounded-xl border cursor-pointer transition-all ${paymentMethod === 'cod' ? 'border-primary bg-primary/5' : 'border-border'}`}>
-              <input type="radio" checked={paymentMethod === 'cod'} onChange={() => setPaymentMethod('cod')} className="sr-only" />
-              <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${paymentMethod === 'cod' ? 'border-primary' : 'border-border'}`}>{paymentMethod === 'cod' && <div className="w-2.5 h-2.5 rounded-full bg-primary" />}</div>
-              <Banknote size={18} className="text-green-600" />
-              <div><p className="font-semibold text-sm">Cash on Delivery (COD)</p><p className="text-xs text-muted-foreground">পণ্য পেয়ে পেমেন্ট করুন</p></div>
-            </label>
+            {!isDigitalOrder && (
+              <label className={`flex items-center gap-4 p-4 rounded-xl border cursor-pointer transition-all ${paymentMethod === 'cod' ? 'border-primary bg-primary/5' : 'border-border'}`}>
+                <input type="radio" checked={paymentMethod === 'cod'} onChange={() => setPaymentMethod('cod')} className="sr-only" />
+                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${paymentMethod === 'cod' ? 'border-primary' : 'border-border'}`}>{paymentMethod === 'cod' && <div className="w-2.5 h-2.5 rounded-full bg-primary" />}</div>
+                <div className="flex-1"><p className="font-semibold text-sm flex items-center gap-2"><Banknote size={16} /> Cash on Delivery</p><p className="text-xs text-muted-foreground">পণ্য পেয়ে পেমেন্ট করুন</p></div>
+              </label>
+            )}
+
             <label className={`flex items-center gap-4 p-4 rounded-xl border cursor-pointer transition-all ${paymentMethod === 'mobile' ? 'border-primary bg-primary/5' : 'border-border'}`}>
               <input type="radio" checked={paymentMethod === 'mobile'} onChange={() => setPaymentMethod('mobile')} className="sr-only" />
               <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${paymentMethod === 'mobile' ? 'border-primary' : 'border-border'}`}>{paymentMethod === 'mobile' && <div className="w-2.5 h-2.5 rounded-full bg-primary" />}</div>
-              <Smartphone size={18} className="text-pink-500" />
-              <div><p className="font-semibold text-sm">Mobile Banking</p><p className="text-xs text-muted-foreground">bKash / Nagad</p></div>
+              <div className="flex-1"><p className="font-semibold text-sm flex items-center gap-2"><Smartphone size={16} /> Mobile Banking</p><p className="text-xs text-muted-foreground">bKash / Nagad</p></div>
             </label>
           </div>
 
           {paymentMethod === 'mobile' && (
-            <div className="space-y-3 p-4 bg-muted/50 rounded-xl border border-border">
-              {settings.bkashNumber && (
-                <div className="flex items-center justify-between bg-pink-500/10 rounded-lg p-3">
-                  <div><p className="text-xs text-muted-foreground">bKash নম্বর</p><p className="font-bold text-sm">{settings.bkashNumber}</p></div>
-                  <button onClick={() => copyNum(settings.bkashNumber)} className="p-1.5 hover:bg-muted rounded-lg"><Copy size={14} /></button>
-                </div>
-              )}
-              {settings.nagadNumber && (
-                <div className="flex items-center justify-between bg-orange-500/10 rounded-lg p-3">
-                  <div><p className="text-xs text-muted-foreground">Nagad নম্বর</p><p className="font-bold text-sm">{settings.nagadNumber}</p></div>
-                  <button onClick={() => copyNum(settings.nagadNumber)} className="p-1.5 hover:bg-muted rounded-lg"><Copy size={14} /></button>
-                </div>
-              )}
-              <p className="text-xs text-muted-foreground">উপরের নম্বরে ৳{finalTotal.toFixed(0)} Send Money করুন এবং নিচে Transaction ID অথবা Screenshot দিন।</p>
-              <div className="space-y-1.5"><Label>Payment Method</Label><Input placeholder="bKash / Nagad" value={mobilePayment.method} onChange={e => setMobilePayment(m => ({ ...m, method: e.target.value }))} /></div>
-              <div className="space-y-1.5"><Label>আপনার নম্বর *</Label><Input placeholder="+880XXXXXXXXX" value={mobilePayment.number} onChange={e => setMobilePayment(m => ({ ...m, number: e.target.value }))} /></div>
-              <div className="space-y-1.5"><Label>Transaction ID (ঐচ্ছিক)</Label><Input placeholder="TrxID" value={mobilePayment.transactionId} onChange={e => setMobilePayment(m => ({ ...m, transactionId: e.target.value }))} /></div>
-              <div className="space-y-1.5">
-                <Label>Payment Screenshot (ঐচ্ছিক)</Label>
-                {mobilePayment.screenshot && <img src={mobilePayment.screenshot} alt="Payment Screenshot" className="w-full max-w-xs rounded-lg border border-border" />}
-                <label className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-border cursor-pointer hover:bg-muted transition-colors text-sm">
-                  <Upload size={14} /> {screenshotUploading ? 'Uploading...' : 'Upload Screenshot'}
-                  <input type="file" accept="image/*" onChange={handleScreenshotUpload} className="hidden" disabled={screenshotUploading} />
-                </label>
+            <div className="bg-muted/50 rounded-xl p-4 space-y-4 border border-border">
+              <div className="flex gap-2">
+                {['bKash', 'Nagad'].map(m => (
+                  <button key={m} onClick={() => setMobilePayment(p => ({ ...p, method: m }))}
+                    className={`flex-1 h-10 rounded-xl text-sm font-semibold transition-all ${mobilePayment.method === m ? (m === 'bKash' ? 'bg-pink-500 text-white' : 'bg-orange-500 text-white') : 'bg-card border border-border'}`}>{m}</button>
+                ))}
               </div>
-              <p className="text-[11px] text-muted-foreground">Transaction ID অথবা Screenshot — যেকোনো একটি দিলেই হবে।</p>
+
+              <div className="bg-card rounded-xl p-3 border border-border">
+                <p className="text-xs text-muted-foreground mb-1">Send Money to this number:</p>
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-lg">{mobilePayment.method === 'bKash' ? (settings.bkashNumber || 'Not set') : (settings.nagadNumber || 'Not set')}</span>
+                  <button onClick={() => copyNum(mobilePayment.method === 'bKash' ? settings.bkashNumber : settings.nagadNumber)} className="p-2 hover:bg-muted rounded-lg"><Copy size={14} /></button>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">Amount: <span className="font-bold text-primary">৳{finalTotal.toFixed(0)}</span></p>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs">Payment Number</Label>
+                <Input value={mobilePayment.number} onChange={e => setMobilePayment(m => ({ ...m, number: e.target.value }))} placeholder="আপনার নম্বর" className="h-9 text-sm" />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Transaction ID</Label>
+                <Input value={mobilePayment.transactionId} onChange={e => setMobilePayment(m => ({ ...m, transactionId: e.target.value }))} placeholder="TrxID" className="h-9 text-sm" />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Payment Screenshot</Label>
+                {mobilePayment.screenshot ? (
+                  <div className="relative inline-block">
+                    <img src={mobilePayment.screenshot} className="w-24 h-24 rounded-lg object-cover border border-border" />
+                    <button onClick={() => setMobilePayment(m => ({ ...m, screenshot: '' }))} className="absolute -top-1 -right-1 w-5 h-5 bg-destructive text-destructive-foreground rounded-full text-xs flex items-center justify-center">×</button>
+                  </div>
+                ) : (
+                  <label className="flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-border cursor-pointer hover:bg-muted transition-colors text-sm text-muted-foreground">
+                    <Upload size={14} /> {screenshotUploading ? 'Uploading...' : 'Upload Screenshot'}
+                    <input type="file" accept="image/*" onChange={handleScreenshotUpload} className="hidden" disabled={screenshotUploading} />
+                  </label>
+                )}
+              </div>
+              <p className="text-[10px] text-muted-foreground">Transaction ID অথবা Screenshot — যেকোনো একটি দিন।</p>
             </div>
           )}
 
-          {/* Price Summary */}
-          <div className="bg-muted/50 rounded-xl p-4 text-sm space-y-2">
+          {/* Order Summary Final */}
+          <div className="bg-card border border-border rounded-xl p-4 space-y-2 text-sm">
             <div className="flex justify-between"><span className="text-muted-foreground">Subtotal</span><span>৳{subtotal.toFixed(0)}</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">Delivery ({deliveryOpt.label})</span><span>৳{deliveryCharge}</span></div>
+            {!isDigitalOrder && <div className="flex justify-between"><span className="text-muted-foreground">Delivery</span><span>৳{deliveryCharge}</span></div>}
             {discountAmount > 0 && <div className="flex justify-between text-green-600"><span>Discount</span><span>-৳{discountAmount.toFixed(0)}</span></div>}
             <div className="flex justify-between font-bold text-base border-t border-border pt-2"><span>Total</span><span className="text-primary">৳{finalTotal.toFixed(0)}</span></div>
           </div>
 
-          {/* Trust badges on checkout */}
-          <div className="flex items-center justify-center gap-4 py-3 text-muted-foreground">
-            <div className="flex items-center gap-1 text-[10px]"><Shield size={12} className="text-green-500" /> Secure</div>
-            <div className="flex items-center gap-1 text-[10px]"><RotateCcw size={12} className="text-blue-500" /> ৭ দিন রিটার্ন</div>
-            <div className="flex items-center gap-1 text-[10px]"><CheckCircle size={12} className="text-emerald-500" /> ১০০% অরিজিনাল</div>
+          <div className="flex gap-3">
+            <Button variant="outline" className="flex-1 h-12" onClick={() => setStep(isDigitalOrder ? 1 : 2)}>Back</Button>
+            <Button className="flex-1 h-12 font-semibold" onClick={placeOrder} disabled={loading || (paymentMethod === 'mobile' && !mobilePayment.number)}>
+              {loading ? 'Processing...' : `Place Order — ৳${finalTotal.toFixed(0)}`}
+            </Button>
           </div>
 
-          <div className="flex gap-3">
-            <Button variant="outline" className="flex-1 h-12" onClick={() => setStep(2)}>Back</Button>
-            <Button className="flex-1 h-12 font-semibold" onClick={placeOrder} disabled={loading || (paymentMethod === 'mobile' && !mobilePayment.number)}>
-              {loading ? 'Processing...' : `Place Order • ৳${finalTotal.toFixed(0)}`}
-            </Button>
+          <div className="flex items-center gap-2 justify-center text-xs text-muted-foreground mt-2">
+            <Shield size={12} /> <span>আপনার তথ্য সম্পূর্ণ নিরাপদ</span>
           </div>
         </motion.div>
       )}
